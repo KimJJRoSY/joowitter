@@ -8,19 +8,29 @@ import { useEffect, useState } from "react";
 import LoadingScreen from "./components/loading-screen";
 import { auth } from "./fbase";
 import { styled } from "styled-components";
+import ProtectedRoute from "./components/protected-route";
 // import { createGlobalStyle } from "styled-components";
 
 const router = createBrowserRouter([
   {
     //모든 경로와 맞아떨어지게 되어있음 => /profile 치면 layout 이랑 profile이랑 같이 뜸
     path: "/",
-    element: <Layout />,
+    element: (
+      // layout이 Home과 Profile을 감싸고 있기 때문에 layout 보호하면 home,profile도 보호
+      <ProtectedRoute>
+        {" "}
+        <Layout />
+      </ProtectedRoute>
+    ),
     children: [
       {
         path: "",
         element: <Home />,
       },
-      { path: "profile", element: <Profile /> },
+      {
+        path: "profile",
+        element: <Profile />,
+      },
     ],
   },
   //chilren안에 포함되지 않음 => layout은 로그인한 사용자만 사용가능
@@ -76,3 +86,4 @@ function App() {
 export default App;
 
 //layout의 Outlet은 페이지 바뀔 때마다 바뀜
+//프로필 페이지와 홈페이지는 모두 ProtectedRoute의 children으로 보내짐
