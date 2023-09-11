@@ -1,5 +1,8 @@
+import { addDoc, collection, updateDoc } from "firebase/firestore";
 import { useState } from "react";
 import { styled } from "styled-components";
+import { auth, db, storage } from "../fbase";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 ``;
 
 const Form = styled.form`
@@ -75,10 +78,51 @@ export default function PostTweetForm() {
       setFile(files[0]);
     }
   };
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const user = auth.currentUser;
+
+    // 로그인 상태인지, 로딩 중인지, 트윗이 비었는지, 트윗의 길이가 180자보다 많은 지 확인 => 있다면 함수 조기 종료
+    if (!user || isLoading || tweet === "" || tweet.length > 180) return;
+    try {
+      setIsLoading(true);
+      // 새로운 document 생성 ==
+      const doc = await addDoc(collection(db, "tweets"), {
+        tweet,
+        createdAt: Date.now(),
+        username: user.displayName || "Anonymous",
+        userId: user.uid,
+      });
+      // 유저가 파일을 첨부하지 않았을 수도 있으니까 파일 첨부했는지 확인
+      if (file) {
+        // tweets 폴더 안에 트윗을 보내는 유저들마다 하나씩 폴더 생성함
+        // tweets 안에 있는 폴더명은 firebase가 제공하는 유저ID
+        const locationRef = ref(
+          storage,
+          `tweets/${user.uid}-${user.displayName}/${doc.id}`
+        );
+        // 파일을 어디에 저장하고 싶은지 알려줘야 됨
+        const result = await uploadBytes(locationRef, file);
+        //이 함수는 result의 퍼블릭 URL을 반환
+        const url = await getDownloadURL(result.ref);
+        //어떤 문서를 업데이트하고 싶은지 그 문서에 대한 참조 넘겨줌
+        await updateDoc(doc, { photo: url });
+      }
+      // 트윗과 사진이 성공적으로 업로드 되었다면 => 리셋해줘야됨
+      setTweet("");
+      setFile(null);
+    } catch (e) {
+      console.log(e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <Form>
+    <Form onSubmit={onSubmit}>
       {/* 유저가 트윗을 작성할 textArea */}
       <TextArea
+        required
         //  글자수랑 줄 제한
         rows={5}
         maxLength={180}
