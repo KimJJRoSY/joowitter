@@ -1,7 +1,5 @@
 import {
   collection,
-  doc,
-  getDocs,
   limit,
   onSnapshot,
   orderBy,
@@ -28,6 +26,8 @@ const Wrapper = styled.div`
   display: flex;
   gap: 10px;
   flex-direction: column;
+  // 세로로 스크롤 가능 => 지금까지 만든 완성물 볼 수  있음
+  overflow-y: scroll;
 `;
 
 export default function Timeline() {

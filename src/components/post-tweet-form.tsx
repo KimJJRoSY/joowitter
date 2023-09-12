@@ -86,7 +86,7 @@ export default function PostTweetForm() {
     if (!user || isLoading || tweet === "" || tweet.length > 180) return;
     try {
       setIsLoading(true);
-      // 새로운 document 생성 ==
+      // 새로운 document 생성
       const doc = await addDoc(collection(db, "tweets"), {
         tweet,
         createdAt: Date.now(),
@@ -97,10 +97,7 @@ export default function PostTweetForm() {
       if (file) {
         // tweets 폴더 안에 트윗을 보내는 유저들마다 하나씩 폴더 생성함
         // tweets 안에 있는 폴더명은 firebase가 제공하는 유저ID
-        const locationRef = ref(
-          storage,
-          `tweets/${user.uid}-${user.displayName}/${doc.id}`
-        );
+        const locationRef = ref(storage, `tweets/${user.uid}/${doc.id}`);
         // 파일을 어디에 저장하고 싶은지 알려줘야 됨
         const result = await uploadBytes(locationRef, file);
         //이 함수는 result의 퍼블릭 URL을 반환
