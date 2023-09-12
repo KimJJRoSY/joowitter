@@ -34,12 +34,8 @@ export default function Tweet({ username, photo, tweet }: ITweet) {
         <Username>{username}</Username>
         <Payload>{tweet}</Payload>
       </Column>
-      {/* photo가 존재하면 보여주고 아니면 꺼져 */}
-      {photo ? (
-        <Column>
-          <Photo src={photo} />
-        </Column>
-      ) : null}
+      {/* photo가 존재하면 보여주고 아니면 꺼져  => Column 안에 연산자 넣어서 사진 없어도 같은 형식으로 보임 */}
+      <Column>{photo ? <Photo src={photo} /> : null}</Column>
     </Wrapper>
   );
 }
