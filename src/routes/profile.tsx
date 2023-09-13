@@ -1,8 +1,18 @@
 import styled from "styled-components";
-import { auth, storage } from "../fbase";
-import { useState } from "react";
+import { auth, db, storage } from "../fbase";
+import { useEffect, useState } from "react";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { updateProfile } from "firebase/auth";
+import {
+  collection,
+  getDocs,
+  limit,
+  orderBy,
+  query,
+  where,
+} from "firebase/firestore";
+import { ITweet } from "../components/timeline";
+import Tweet from "../components/tweet";
 
 const Wrapper = styled.div`
   display: flex;
@@ -37,22 +47,49 @@ const Name = styled.span`
   font-size: 22px;
 `;
 
+const Tweets = styled.div`
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 10px;
+`;
+
 export default function Profile() {
   const user = auth.currentUser;
   const [avatar, setAvatar] = useState(user?.photoURL);
-  const onAvatarChange = async(e.React.ChangeEvent<HTMLInputElement>) => {
-    const {files} = e.target;
-    if(!user) return;
-    if(files && files.length === 1){
-      const file = files [0];
-      //avatars라는 폴더에 유저 ID로 사진 업로드 =>유저가 유저 이미지를 변경해도 동일한 파일 이름으로 업로드가 되어 덮어쓰기 
-      const locationRef = ref(storage, `avatars/${user?.uid}`); 
+  const [tweets, setTweets] = useState<ITweet[]>([]);
+  const onAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { files } = e.target;
+    if (!user) return;
+    if (files && files.length === 1) {
+      const file = files[0];
+      //avatars라는 폴더에 유저 ID로 사진 업로드 =>유저가 유저 이미지를 변경해도 동일한 파일 이름으로 업로드가 되어 덮어쓰기
+      const locationRef = ref(storage, `avatars/${user?.uid}`);
       const result = await uploadBytes(locationRef, file);
       const avatarUrl = await getDownloadURL(result.ref);
       setAvatar(avatarUrl);
-      await updateProfile(user, {photoURL: avatarUrl});
+      await updateProfile(user, { photoURL: avatarUrl });
     }
   };
+  const fetchTweets = async () => {
+    // where에서 tweets들의 구조들을 참조 할 수 있음 => 유저 ID와 현재 로그인 된 유저 아이다가 같다면,
+    const tweetQuery = query(
+      collection(db, "tweets"),
+      where("userId", "==", user?.uid),
+      orderBy("createdAt", "desc"),
+      limit(25)
+    );
+    // timeline 만들 때 했던 것과 똑같이 추출
+    const snapshot = await getDocs(tweetQuery);
+    const tweets = snapshot.docs.map((doc) => {
+      const { tweet, createdAt, userId, username, photo } = doc.data();
+      return { tweet, createdAt, userId, username, photo, id: doc.id };
+    });
+    setTweets(tweets);
+  };
+  useEffect(() => {
+    fetchTweets();
+  }, []);
   return (
     <Wrapper>
       <AvatarUpload htmlFor="avatar">
@@ -71,11 +108,25 @@ export default function Profile() {
         )}
       </AvatarUpload>
       {/* input 숨겨놓고 누를 때마다 보여주기 위해서 AvatarUpload랑 연결*/}
-      <AvatarInput onChange={onAvatarChange} id="avatar" type="file" accept="image/*" />
+      <AvatarInput
+        onChange={onAvatarChange}
+        id="avatar"
+        type="file"
+        accept="image/*"
+      />
       <Name>
         {/* 만약 유저가 닉네임을 갖고 있다면 닉네임을 보여줄거고 만약 없으면 익명으로 보여줌*/}
         {user?.displayName ?? "Anonymous"}
       </Name>
+      <Tweets>
+        {tweets.map((tweet) => (
+          <Tweet key={tweet.id} {...tweet} />
+        ))}
+      </Tweets>
     </Wrapper>
   );
 }
+
+// firebase의 데이터베이스인 FireStore => 너무 유연해서 어떤 데이터든지 상관없이 다 받아들임
+// so, 필터링 하려고 하더라도 그런 필터가 있다고 fireStore에 알려줘야됨
+// => 콘솔 창에 뜬 링크 누르면 firebase로 넘어가는데 거기서 인덱스 설정 가능 => save 버트 누르기
